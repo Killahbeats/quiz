@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Quiz Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+        #video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+        .quiz-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        .question {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .options label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        #result {
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <video autoplay loop muted id="video-background">
+        <source src="your-video.mp4" type="video/mp4">
+    </video>
+    <div class="quiz-container">
+        <div class="question" id="question">
+            <!-- The question will be displayed here -->
+        </div>
+        <div class="options" id="options">
+            <!-- The answer options will be displayed here -->
+        </div>
+        <div id="result"></div>
+        <div id="timer">Time Remaining: <span id="time"></span> seconds</div>
+        <button id="nextButton" onclick="nextQuestion()" disabled>Next</button>
+        <button id="showScoreButton" onclick="showScore()" disabled>Show Score</button>
+    </div>
+
+    <audio id="correctAudio">
+        <source src="correct.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="incorrectAudio">
+        <source src="incorrect.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="time_up_sound">
+        <source src="time_up_sound.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const questions = [
+            {
+                question: "What is the largest planet in our solar system?",
+                type: "multiple-choice",
+                options: ["A) Earth", "B) Mars", "C) Jupiter", "D) Venus"],
+                answer: ["C) Jupiter"]
+            },
+            {
+                question: "True or False: Water boils at 100 degrees Celsius (212 degrees Fahrenheit) at sea level.",
+                type: "true-false",
+                answer: true
+            },
+            {
+                question: "The capital of France is ____________.",
+                type: "fill-in-blank",
+                answer: ["Paris"]
+            },
+            {
+                question: "Which gas makes up the majority of Earth's atmosphere?",
+                type: "multiple-choice",
+                options: ["A) Oxygen", "B) Carbon Dioxide", "C) Nitrogen", "D) Hydrogen"],
+                answer: ["C) Nitrogen"]
+            },
+            {
+                question: "The Great Wall of China is visible from space. (True/False)",
+                type: "true-false",
+                answer: false
+            },
+            {
+                question: "The formula for water is H2O, where H stands for ____________ and O stands for oxygen.",
+                type: "fill-in-blank",
+                answer: ["Hydrogen"]
+            },
+            {
+                question: "What is the capital of Japan?",
+                type: "multiple-choice",
+                options: ["A) Tokyo", "B) Kyoto", "C) Osaka", "D) Hiroshima"],
+                answer: ["A) Tokyo"]
+            },
+            {
+                question: "Penguins can fly. (True/False)",
+                type: "true-false",
+                answer: false
+            },
+            {
+                question: "Among",
+                type: "multiple-choice",
+                options: ["A) Bus", "B) Sus", "C) Us", "D) Goose"],
+                answer: ["C) Us"]
+            },
+            {
+                question: "Who wrote the play 'Romeo and Juliet'?",
+                type: "multiple-choice",
+                options: ["A) William Shakespeare", "B) Charles Dickens", "C) Jane Austen", "D) Mark Twain"],
+                answer: ["A) William Shakespeare"]
+            },
+            {
+                question: "True or False: The sun rises in the west and sets in the east.",
+                type: "true-false",
+                answer: false
+            },
+            {
+                question: "Identify the capital of Canada:",
+                type: "identification",
+                answer: "Ottawa"
+            },
+            {
+                question: "Which planet is known as the 'Red Planet'?",
+                type: "multiple-choice",
+                options: ["A) Earth", "B) Venus", "C) Mars", "D) Saturn"],
+                answer: ["C) Mars"]
+            },
+            {
+                question: "True or False: The Eiffel Tower is located in London.",
+                type: "true-false",
+                answer: false
+            },
+            {
+                question: "The programming language Python is based on a modified version of JavaScript. (True/False)",
+                type: "true-false",
+                answer: false
+            }
+        ];
+
+        let currentQuestion = 0;
+        let userAnswers = [];
+        let timerInterval;
+        let timeLeft = 10; // Adjust the timer duration here (in seconds)
+        const nextButton = document.getElementById("nextButton");
+        const showScoreButton = document.getElementById("showScoreButton");
+
+        function displayQuestion() {
+            const questionContainer = document.getElementById("question");
+            const optionsContainer = document.getElementById("options");
+
+            clearInterval(timerInterval);
+            timeLeft = 10; // Reset the timer for each question
+            nextButton.disabled = true; // Disable Next button
+
+            const questionObj = questions[currentQuestion];
+            questionContainer.textContent = questionObj.question;
+            optionsContainer.innerHTML = "";
+
+            if (questionObj.type === "multiple-choice") {
+                questionObj.options.forEach((option, index) => {
+                    const input = document.createElement("input");
+                    input.type = "checkbox";
+                    input.name = "option";
+                    input.value = option;
+                    optionsContainer.appendChild(input);
+                    optionsContainer.appendChild(document.createTextNode(option));
+                    optionsContainer.appendChild(document.createElement("br"));
+                });
+            } else if (questionObj.type === "true-false") {
+                const trueOption = document.createElement("input");
+                trueOption.type = "radio";
+                trueOption.name = "option";
+                trueOption.value = "true";
+                trueOption.id = "trueOption";
+
+                const falseOption = document.createElement("input");
+                falseOption.type = "radio";
+                falseOption.name = "option";
+                falseOption.value = "false";
+                falseOption.id = "falseOption";
+
+                const trueLabel = document.createElement("label");
+                trueLabel.textContent = "True";
+                trueLabel.setAttribute("for", "trueOption");
+
+                const falseLabel = document.createElement("label");
+                falseLabel.textContent = "False";
+                falseLabel.setAttribute("for", "falseOption");
+
+                optionsContainer.appendChild(trueOption);
+                optionsContainer.appendChild(trueLabel);
+                optionsContainer.appendChild(falseOption);
+                optionsContainer.appendChild(falseLabel);
+            } else if (questionObj.type === "fill-in-blank") {
+                const input = document.createElement("input");
+                input.type = "text";
+                input.id = "fillInBlankInput";
+                optionsContainer.appendChild(input);
+            } else if (questionObj.type === "identification") {
+                const input = document.createElement("input");
+                input.type = "text";
+                input.id = "identificationInput";
+                optionsContainer.appendChild(input);
+            }
+
+            // Start the timer
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            const timeElement = document.getElementById("time");
+            timeElement.textContent = timeLeft;
+            if (timeLeft === 0) {
+                clearInterval(timerInterval);
+                // Handle the case when time runs out
+                handleTimeUp();
+            } else {
+                timeLeft--;
+            }
+        }
+
+        function nextQuestion() {
+            const questionObj = questions[currentQuestion];
+
+            if (questionObj.type === "multiple-choice") {
+                const selectedOptions = document.querySelectorAll("input[name='option']:checked");
+                const selectedAnswers = Array.from(selectedOptions).map(option => option.value);
+                userAnswers.push(selectedAnswers);
+
+                // Check if the answers are correct
+                if (arraysEqual(selectedAnswers, questionObj.answer)) {
+                    showCorrectJumpscare();
+                } else {
+                    showIncorrectJumpscare();
+                }
+            } else if (questionObj.type === "true-false") {
+                const selectedOption = document.querySelector("input[name='option']:checked");
+                const selectedAnswer = selectedOption ? selectedOption.value === "true" : false;
+                userAnswers.push(selectedAnswer);
+
+                // Check if the answer is correct
+                if (selectedAnswer === questionObj.answer) {
+                    showCorrectJumpscare();
+                } else {
+                    showIncorrectJumpscare();
+                }
+            } else if (questionObj.type === "fill-in-blank") {
+                const fillInBlankInput = document.getElementById("fillInBlankInput");
+                const userAnswer = fillInBlankInput.value.trim().toLowerCase();
+                userAnswers.push(userAnswer);
+
+                // Check if the answer is correct
+                if (userAnswer === questionObj.answer[0].toLowerCase()) {
+                    showCorrectJumpscare();
+                } else {
+                    showIncorrectJumpscare();
+                }
+            } else if (questionObj.type === "identification") {
+                const identificationInput = document.getElementById("identificationInput");
+                const userAnswer = identificationInput.value.trim().toLowerCase();
+                userAnswers.push(userAnswer);
+
+                // Check if the answer is correct
+                if (userAnswer === questionObj.answer.toLowerCase()) {
+                    showCorrectJumpscare();
+                } else {
+                    showIncorrectJumpscare();
+                }
+            }
+
+            currentQuestion++;
+
+            if (currentQuestion < questions.length) {
+                displayQuestion();
+            } else {
+                showScoreButton.disabled = false;
+                nextButton.disabled = true;
+            }
+        }
+
+        function showScore() {
+            showScoreButton.disabled = true;
+            showAnswers();
+        }
+
+        function showAnswers() {
+            const resultContainer = document.getElementById("result");
+            resultContainer.innerHTML = "Correct Answers:";
+
+            questions.forEach((questionObj, index) => {
+                resultContainer.innerHTML += `<br>Question ${index + 1}: ${questionObj.answer}`;
+            });
+
+            calculateAndDisplayScore();
+        }
+
+        function calculateAndDisplayScore() {
+            let score = 0;
+
+            questions.forEach((questionObj, index) => {
+                const userAnswer = userAnswers[index];
+
+                if (questionObj.type === "multiple-choice") {
+                    if (arraysEqual(userAnswer, questionObj.answer)) {
+                        score++;
+                    }
+                } else if (questionObj.type === "true-false" || questionObj.type === "fill-in-blank" || questionObj.type === "identification") {
+                    if (userAnswer === questionObj.answer.toLowerCase()) {
+                        score++;
+                    }
+                }
+            });
+
+            const resultContainer = document.getElementById("result");
+            resultContainer.innerHTML += `\nYour score: ${score} out of ${questions.length}`;
+        }
+
+        function arraysEqual(arr1, arr2) {
+            if (arr1.length !== arr2.length) return false;
+            for (let i = 0; i < arr1.length; i++) {
+                if (arr1[i] !== arr2[i]) return false;
+            }
+            return true;
+        }
+
+        function showCorrectJumpscare() {
+            // Show a correct image
+            const correctImage = new Image();
+            correctImage.src = "correct.png";
+            correctImage.style.position = "fixed";
+            correctImage.style.top = "0";
+            correctImage.style.left = "0";
+            correctImage.style.width = "100%";
+            correctImage.style.height = "100%";
+            correctImage.style.zIndex = "9999";
+            document.body.appendChild(correctImage);
+
+            // Play correct sound
+            const correctAudio = document.getElementById("correctAudio");
+            correctAudio.play();
+
+            setTimeout(() => {
+                // Remove the image after a delay (e.g., 2 seconds)
+                document.body.removeChild(correctImage);
+                handleNextQuestion();
+            }, 1000); // 2 seconds delay before moving on
+        }
+
+        function showIncorrectJumpscare() {
+            // Show an incorrect image
+            const incorrectImage = new Image();
+            incorrectImage.src = "incorrect.png";
+            incorrectImage.style.position = "fixed";
+            incorrectImage.style.top = "0";
+            incorrectImage.style.left = "0";
+            incorrectImage.style.width = "100%";
+            incorrectImage.style.height = "100%";
+            incorrectImage.style.zIndex = "9999";
+            document.body.appendChild(incorrectImage);
+
+            // Play incorrect sound
+            const incorrectAudio = document.getElementById("incorrectAudio");
+            incorrectAudio.play();
+
+            setTimeout(() => {
+                // Remove the image after a delay (e.g., 2 seconds)
+                document.body.removeChild(incorrectImage);
+                handleNextQuestion();
+            }, 1000); // 2 seconds delay before moving on
+        }
+
+        function handleNextQuestion() {
+            if (currentQuestion < questions.length) {
+                displayQuestion();
+            } else {
+                showScoreButton.disabled = false;
+                nextButton.disabled = true;
+            }
+        }
+
+        function handleTimeUp() {
+            // Play time's up sound
+            const timeUpAudio = document.getElementById("time_up_sound");
+            timeUpAudio.play();
+
+            // Set the user's answer to null
+            const questionObj = questions[currentQuestion];
+            if (questionObj.type === "true-false") {
+                userAnswers.push(null);
+            } else if (questionObj.type === "fill-in-blank" || questionObj.type === "identification") {
+                userAnswers.push(null);
+            } else if (questionObj.type === "multiple-choice") {
+                userAnswers.push([null]);
+            }
+
+            currentQuestion++; // Move to the next question
+
+            if (currentQuestion < questions.length) {
+                displayQuestion();
+            } else {
+                showScoreButton.disabled = false;
+                nextButton.disabled = true;
+            }
+        }
+
+        // Enable the "Next" button when an option is selected
+        function enableNextButton() {
+            nextButton.disabled = false;
+        }
+
+        // Add event listeners to options for enabling the "Next" button
+        const optionsContainer = document.getElementById("options");
+        optionsContainer.addEventListener("change", enableNextButton);
+
+        // Initial display
+        displayQuestion();
+    </script>
+</body>
+</html>
